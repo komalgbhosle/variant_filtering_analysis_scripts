@@ -1,0 +1,73 @@
+###########Firstly merge vcf file by indexing  ##########
+[Note:Merge seperately for controle and disease vcf files.Run 2 times]
+S{Script: VCF_Merging_code.sh]
+
+
+#########to find comman variants between two vcf files by comapring chr,Pos,ref,alt allele ####### [ref:https://unix.stackexchange.com/questions/134829/compare-two-columns-of-different-files-and-print-if-it-matches]
+[Note: need this filtering after Controle_Merged.vcf and Disease_Merged.vcf]
+
+awk -F'\t' 'NR==FNR{c[$1$2$4$5]++;next};c[$1$2$4$5] > 0' Control_Merged.vcf Asthma_Merged.vcf > Comman_variants.txt
+
+#where, 
+#-F'\t' : sets the field separator to tab.
+#NR==FNR : NR is the current input line number and FNR the current file's line number. The two will be equal only while the 1st file is being read.
+c[$1$2$4$5]++; next : if this is the 1st file, save the 1st,2nd,4th,5th fields in the c array. Then, skip to the next line so that this is only applied on the 1st file.
+c[$1$2]>0 : the else block will only be executed if this is the second file so we check whether fields 1 and 2 ,3 and 4 of this file have already been seen (c[$1$2$4$5]>0) and if they have been, we print the line. In awk, the default action is to print the line so if c[$1$2]>0 is true, the line will be printed.
+
+############# To Actually use #################3
+
+#step1:###########to fiter variants found in controle and kept variants found only in Disease###### [ref:https://unix.stackexchange.com/questions/90489/compare-two-files-with-first-column-and-remove-duplicate-row-from-2nd-file-in-sh]
+
+awk 'FNR==NR{a[$1$2$4$5];next};!($1$2$4$5 in a)' Control_Merged.vcf Asthma_Merged.vcf > Disease_unique_variants.vcf [this output dont have header]
+#where
+
+#FNR == NR: This test is true when the number of records is equal to the number of records in the file. This is only true for the first file, for the second file NR will be equal to the number of lines of file1 + FNR.
+
+#a[$1$2$4$5]: Create an array element index of the first field of file1.
+
+#next: skip to the next record so no more processing is done on file1.
+
+#!($1$2$4$5 in a): See if the first field ($1) is present in the array, ie in file1, and print the whole line (to file3).
+
+#$1$2$4$5====these are the important columns of vcf file needed to match variants
+
+[Note:After this only copy the header from disease_Merged.vcf file and put in Disease_unique_variants.vcf]
+
+
+#Step2:###to put header of one file to another####
+
+$head -n1 Asthma_Merged.vcf > header.txt(file1)
+$sed -i "1s/^/$(head -n1 file1)\n/" Disease_unique_variants.vcf (file2) (##file1---from where we needed header ####file2-----where we want to shift header)
+
+
+#step3:##########to filter info columns only select first information#######
+[Note: this is just for selecting from info only first info columns from all]
+awk '{split($8,a,",");for(i in a);print $1,$2,$3,$4,$5,$6,$7,"\t"a[1],$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41,$42,$43,$44,$45,$46,$47,$48,$49,$50,$51,$52,$53,$54,$55,$56,$57,$58,$59,$60,$61,$62,$63,$64,$65,$66,$67,$68,$69,$70,$71,$72,$73,$74,$75,$76,$77}' Filtered_only_Asthma_varinats.vcf > Info_column_splited_Asthma_variants.vcf
+[$8: INFo column , "\t"a[1] : only print first field of INFO column]
+
+####to save file with diff delemeter to one delemeter####
+sed "s/ /\t/g" Info_column_splited_Asthma_variants.vcf > Info_column_splited_Asthma_variants.txt
+
+
+#step4:Filtering only missense variants for LOF analysis ########
+
+sed -n '1p;/missense_variant/p' Info_column_splited_Asthma_variants.vcf > Filtered_Asthma_Missense_variants.csv (open in excel)
+
+@ OR
+
+####Run python script script to calculate LOF mutations####
+[#Input : Info_column_splited_Asthma_variants.txt]
+Script: LOF_analysis_script.ipynb
+output : LOF mutations
+
+
+
+
+
+
+
+
+
+
+
+
